@@ -90,7 +90,7 @@ def display_stock_details():
             target_price_entry = tk.Entry(alert_window, width=30)
             target_price_entry.grid(row=0, column=1, pady=5, padx=5)
 
-            tk.Label(alert_window, text="Adresa email:").grid(row=1, column=0, pady=5, padx=5)
+            tk.Label(alert_window, text="Adresa de email:").grid(row=1, column=0, pady=5, padx=5)
             email_entry = tk.Entry(alert_window, width=30)
             email_entry.grid(row=1, column=1, pady=5, padx=5)
 
