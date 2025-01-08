@@ -9,8 +9,8 @@ from tkinter import messagebox, ttk
 # Configurații utilizator
 STOCK_API_URL = "https://finnhub.io/api/v1/quote"
 SEARCH_API_URL = "https://finnhub.io/api/v1/search"
-TRENDING_API_URL = "https://finnhub.io/api/v1/stock/symbol"
-API_KEY = "ctsl3epr01qin3c01btgctsl3epr01qin3c01bu0"
+SYMBOL_API_URL = "https://finnhub.io/api/v1/stock/symbol"
+API_KEY = "ctsl3epr01qin3c01btgctsl3epr01qin3c01bu0" 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
@@ -19,12 +19,12 @@ def get_stock_price(stock_symbol):
     try:
         url = f"{STOCK_API_URL}?symbol={stock_symbol}&token={API_KEY}"
         with urllib.request.urlopen(url) as response:
-            data = response.read()
+            data = response.read().decode("utf-8")
             parsed_data = json.loads(data)
             return {
-                "current": parsed_data.get("c", None),
-                "change": parsed_data.get("d", None),
-                "percent": parsed_data.get("dp", None)
+                "current": parsed_data.get("c", "N/A"),
+                "change": parsed_data.get("d", "N/A"),
+                "percent": parsed_data.get("dp", "N/A")
             }
     except Exception as e:
         messagebox.showerror("Eroare", f"Eroare la obținerea prețului stocului: {e}")
@@ -35,9 +35,9 @@ def search_stock_symbol(stock_name):
     try:
         url = f"{SEARCH_API_URL}?q={stock_name}&token={API_KEY}"
         with urllib.request.urlopen(url) as response:
-            data = response.read()
+            data = response.read().decode("utf-8")
             parsed_data = json.loads(data)
-            if parsed_data["count"] > 0:
+            if parsed_data.get("count", 0) > 0:
                 return parsed_data["result"][0]["symbol"]  # Primul rezultat
             else:
                 messagebox.showinfo("Info", "Nu s-a găsit niciun simbol pentru acest nume de stoc.")
@@ -46,17 +46,36 @@ def search_stock_symbol(stock_name):
         messagebox.showerror("Eroare", f"Eroare la căutarea simbolului stocului: {e}")
         return None
 
-# Funcție pentru a obține stocurile în creștere sau scădere
+# Funcție pentru obținerea simbolurilor stocurilor
 def get_top_stocks():
     try:
-        url = f"{TRENDING_API_URL}?exchange=US&token={API_KEY}"
+        url = f"{SYMBOL_API_URL}?exchange=US&token={API_KEY}"
         with urllib.request.urlopen(url) as response:
-            data = response.read()
+            data = response.read().decode("utf-8")
             parsed_data = json.loads(data)
             return parsed_data[:10]  # Primele 10 stocuri
     except Exception as e:
         messagebox.showerror("Eroare", f"Eroare la obținerea topului stocurilor: {e}")
         return []
+
+# Funcție pentru trimiterea email-ului
+def send_email_notification(email, stock_symbol, current_price):
+    try:
+        message = MIMEMultipart()
+        message["From"] = "saracutu.cosmin@yahoo.com"
+        message["To"] = email
+        message["Subject"] = f"Alertă stoc: {stock_symbol}"
+
+        body = f"Stocul {stock_symbol} a atins valoarea țintă. Preț curent: {current_price}."
+        message.attach(MIMEText(body, "plain"))
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login("saracutu.cosmin@yahoo.com", "qwertyuioplkj1234")
+            server.send_message(message)
+        messagebox.showinfo("Succes", "Email trimis cu succes!")
+    except Exception as e:
+        messagebox.showerror("Eroare", f"Eroare la trimiterea email-ului: {e}")
 
 # Funcție pentru verificarea și afișarea detaliilor stocului
 def display_stock_details():
@@ -122,22 +141,12 @@ def show_top_stocks():
         top_window = tk.Toplevel(root)
         top_window.title("Top 10 Stocuri")
 
-        tree = ttk.Treeview(top_window, columns=("Symbol", "Description", "Current", "Change", "Percent"), show="headings")
+        tree = ttk.Treeview(top_window, columns=("Symbol", "Description"), show="headings")
         tree.heading("Symbol", text="Simbol")
         tree.heading("Description", text="Descriere")
-        tree.heading("Current", text="Preț Curent")
-        tree.heading("Change", text="Schimbare")
-        tree.heading("Percent", text="Procent")
 
         for stock in top_stocks:
-            stock_price = get_stock_price(stock["symbol"])
-            tree.insert("", "end", values=(
-                stock["symbol"],
-                stock["description"],
-                stock_price.get("current", "N/A"),
-                stock_price.get("change", "N/A"),
-                stock_price.get("percent", "N/A")
-            ))
+            tree.insert("", "end", values=(stock["symbol"], stock.get("description", "N/A")))
 
         tree.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
